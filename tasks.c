@@ -4861,6 +4861,7 @@ TickType_t uxTaskResetEventItemValue( void )
 
     BaseType_t xTaskGenericNotify( TaskHandle_t xTaskToNotify,
                                    UBaseType_t uxIndexToNotify,
+                                   uint32_t ulClearMask,
                                    uint32_t ulValue,
                                    eNotifyAction eAction,
                                    uint32_t * pulPreviousNotificationValue )
@@ -4868,6 +4869,7 @@ TickType_t uxTaskResetEventItemValue( void )
         TCB_t * pxTCB;
         BaseType_t xReturn = pdPASS;
         uint8_t ucOriginalNotifyState;
+        uint32_t ulOriginalNotifiedValue;
 
         configASSERT( uxIndexToNotify < configTASK_NOTIFICATION_ARRAY_ENTRIES );
         configASSERT( xTaskToNotify );
@@ -4881,6 +4883,7 @@ TickType_t uxTaskResetEventItemValue( void )
             }
 
             ucOriginalNotifyState = pxTCB->ucNotifyState[ uxIndexToNotify ];
+            ulOriginalNotifiedValue = pxTCB->ulNotifiedValue[ uxIndexToNotify ];
 
             pxTCB->ucNotifyState[ uxIndexToNotify ] = taskNOTIFICATION_RECEIVED;
 
@@ -4888,6 +4891,14 @@ TickType_t uxTaskResetEventItemValue( void )
             {
                 case eSetBits:
                     pxTCB->ulNotifiedValue[ uxIndexToNotify ] |= ulValue;
+                    break;
+
+                case eModifyBits:
+                    pxTCB->ulNotifiedValue[ uxIndexToNotify ] = ( pxTCB->ulNotifiedValue[ uxIndexToNotify ] & ( ~ulClearMask ) ) | ulValue;
+                    if( ulOriginalNotifiedValue == pxTCB->ulNotifiedValue[ uxIndexToNotify ] )
+                    {
+                        pxTCB->ucNotifyState[ uxIndexToNotify ] = ucOriginalNotifyState;
+                    }
                     break;
 
                 case eIncrement:

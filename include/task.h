@@ -108,6 +108,7 @@ typedef enum
 {
     eNoAction = 0,            /* Notify the task without updating its notify value. */
     eSetBits,                 /* Set bits in the task's notification value. */
+    eModifyBits,              /* Modify bits in the task's notification value as specified in the ClearMask and SetMask. */
     eIncrement,               /* Increment the task's notification value. */
     eSetValueWithOverwrite,   /* Set the task's notification value to a specific value even if the previous value has not yet been read by the task. */
     eSetValueWithoutOverwrite /* Set the task's notification value if the previous value has been read by the task. */
@@ -2017,6 +2018,9 @@ configRUN_TIME_COUNTER_TYPE ulTaskGetIdleRunTimePercent( void ) PRIVILEGED_FUNCT
  * must be less than configTASK_NOTIFICATION_ARRAY_ENTRIES.  xTaskNotify() does
  * not have this parameter and always sends notifications to index 0.
  *
+ * @param ulClearMask Bits to be cleared from the task's notification value.
+ * Only has effect when eAction is eModifyBits.
+ *
  * @param ulValue Data that can be sent with the notification.  How the data is
  * used depends on the value of the eAction parameter.
  *
@@ -2026,6 +2030,14 @@ configRUN_TIME_COUNTER_TYPE ulTaskGetIdleRunTimePercent( void ) PRIVILEGED_FUNCT
  * eSetBits -
  * The target notification value is bitwise ORed with ulValue.
  * xTaskNotifyIndexed() always returns pdPASS in this case.
+ *
+ * eModifyBits -
+ * First the bits in ulClearMask are cleared, then the bits in ulValue are set
+ * in the target notification value.
+ * If this operation has changed the task's notification value, xTaskNotifyIndexed()
+ * returns pdPASS and the task is notified.
+ * If the task's notification value has been the same before and after this
+ * operation, xTaskNotifyIndexed() returns pdFAIL and the task is NOT notified.
  *
  * eIncrement -
  * The target notification value is incremented.  ulValue is not used and
@@ -2061,13 +2073,19 @@ configRUN_TIME_COUNTER_TYPE ulTaskGetIdleRunTimePercent( void ) PRIVILEGED_FUNCT
  */
 BaseType_t xTaskGenericNotify( TaskHandle_t xTaskToNotify,
                                UBaseType_t uxIndexToNotify,
+                               uint32_t ulClearMask,
                                uint32_t ulValue,
                                eNotifyAction eAction,
                                uint32_t * pulPreviousNotificationValue ) PRIVILEGED_FUNCTION;
 #define xTaskNotify( xTaskToNotify, ulValue, eAction ) \
-    xTaskGenericNotify( ( xTaskToNotify ), ( tskDEFAULT_INDEX_TO_NOTIFY ), ( ulValue ), ( eAction ), NULL )
+    xTaskGenericNotify( ( xTaskToNotify ), ( tskDEFAULT_INDEX_TO_NOTIFY ), ( 0UL ), ( ulValue ), ( eAction ), NULL )
 #define xTaskNotifyIndexed( xTaskToNotify, uxIndexToNotify, ulValue, eAction ) \
-    xTaskGenericNotify( ( xTaskToNotify ), ( uxIndexToNotify ), ( ulValue ), ( eAction ), NULL )
+    xTaskGenericNotify( ( xTaskToNotify ), ( uxIndexToNotify ), ( 0UL ), ( ulValue ), ( eAction ), NULL )
+
+#define xTaskNotifyModify( xTaskToNotify, ulClearMask, ulSetMask ) \
+    xTaskGenericNotify( ( xTaskToNotify ), ( tskDEFAULT_INDEX_TO_NOTIFY ), ( ulClearMask ), ( ulSetMask ), ( eModifyBits ), NULL )
+#define xTaskNotifyModifyIndexed( xTaskToNotify, uxIndexToNotify, ulClearMask, ulSetMask ) \
+    xTaskGenericNotify( ( xTaskToNotify ), ( uxIndexToNotify ), ( ulClearMask ), ( ulSetMask ), ( eModifyBits ), NULL )
 
 /**
  * task. h
@@ -2094,9 +2112,9 @@ BaseType_t xTaskGenericNotify( TaskHandle_t xTaskToNotify,
  * \ingroup TaskNotifications
  */
 #define xTaskNotifyAndQuery( xTaskToNotify, ulValue, eAction, pulPreviousNotifyValue ) \
-    xTaskGenericNotify( ( xTaskToNotify ), ( tskDEFAULT_INDEX_TO_NOTIFY ), ( ulValue ), ( eAction ), ( pulPreviousNotifyValue ) )
+    xTaskGenericNotify( ( xTaskToNotify ), ( tskDEFAULT_INDEX_TO_NOTIFY ), ( 0UL ), ( ulValue ), ( eAction ), ( pulPreviousNotifyValue ) )
 #define xTaskNotifyAndQueryIndexed( xTaskToNotify, uxIndexToNotify, ulValue, eAction, pulPreviousNotifyValue ) \
-    xTaskGenericNotify( ( xTaskToNotify ), ( uxIndexToNotify ), ( ulValue ), ( eAction ), ( pulPreviousNotifyValue ) )
+    xTaskGenericNotify( ( xTaskToNotify ), ( uxIndexToNotify ), ( 0UL ), ( ulValue ), ( eAction ), ( pulPreviousNotifyValue ) )
 
 /**
  * task. h
